@@ -60,10 +60,22 @@ export default function SqlModal({ isOpen, onClose, sql, onApply }: SqlModalProp
           />
         </div>
         <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
-          <button className="btn" onClick={handleCopy} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'transparent', border: '1px solid var(--border-color)' }}>
-            {copied ? <Check size={18} /> : <Copy size={18} />}
-            {copied ? 'Copiado!' : 'Copiar SQL'}
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn" onClick={handleCopy} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'transparent', border: '1px solid var(--border-color)' }}>
+              {copied ? <Check size={18} /> : <Copy size={18} />}
+              {copied ? 'Copiado!' : 'Copiar'}
+            </button>
+            <button className="btn" onClick={() => {
+              const element = document.createElement("a");
+              const file = new Blob([editableSql], {type: 'text/plain'});
+              element.href = URL.createObjectURL(file);
+              element.download = "diagram.sql";
+              document.body.appendChild(element); // Required for this to work in FireFox
+              element.click();
+            }} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'transparent', border: '1px solid var(--border-color)' }}>
+              Baixar .sql
+            </button>
+          </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
             <button className="btn" onClick={handleApply} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#3b82f6', color: '#fff' }}>

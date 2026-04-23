@@ -104,9 +104,10 @@ export function parseSQLToDiagram(sql: string) {
                  source: sourceNode.id,
                  sourceHandle: `${sourceCol.id}-source`,
                  target: targetNode.id,
-                 targetHandle: `${targetCol.id}-target`,
+                 targetHandle: `${targetCol.id}-left-target`,
                  animated: true,
                  style: { stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '5, 5' },
+                 markerEnd: 'url(#crows-foot)',
                  className: 'pulsing-edge'
              });
          }

@@ -78,6 +78,15 @@ export default function Canvas({
         <MiniMap nodeColor="#1e293b" maskColor="rgba(15, 23, 42, 0.8)" />
         <Background color="#334155" gap={16} />
       </ReactFlow>
+
+      {/* Definições de SVG para o Pé de Galinha (Crow's Foot) */}
+      <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+        <defs>
+          <marker id="crows-foot" markerWidth="20" markerHeight="20" refX="16" refY="10" orient="auto-start-reverse">
+            <path d="M 0,0 L 16,10 M 0,20 L 16,10 M 16,0 L 16,20" stroke="#3b82f6" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </marker>
+        </defs>
+      </svg>
     </div>
   );
 }

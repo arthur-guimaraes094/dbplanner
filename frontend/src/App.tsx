@@ -5,6 +5,8 @@ import Canvas from './components/Canvas';
 import SqlModal from './components/SqlModal';
 import TabsBar from './components/TabsBar';
 import { parseSQLToDiagram } from './sqlParser';
+import { getLayoutedElements } from './layout';
+import { toPng } from 'html-to-image';
 import { Toaster, toast } from 'react-hot-toast';
 
 const initialNodes = [
@@ -25,16 +27,45 @@ const initialNodes = [
 const initialEdges: any[] = [];
 
 export default function App() {
-  const [tabs, setTabs] = useState<any[]>([{
-    id: 'tab-1',
-    name: 'Diagrama 1',
-    nodes: initialNodes,
-    edges: initialEdges
-  }]);
-  const [activeTabId, setActiveTabId] = useState('tab-1');
+  const [tabs, setTabs] = useState<any[]>(() => {
+    const saved = localStorage.getItem('dbplanner_tabs');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [{ id: 'tab-1', name: 'Diagrama 1', nodes: initialNodes, edges: initialEdges }];
+  });
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<any>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<any>(initialEdges);
+  const [activeTabId, setActiveTabId] = useState(() => {
+    const saved = localStorage.getItem('dbplanner_active_tab');
+    if (saved) return saved;
+    return 'tab-1';
+  });
+
+  const [nodes, setNodes, onNodesChange] = useNodesState<any>((() => {
+     const savedTabs = localStorage.getItem('dbplanner_tabs');
+     const savedActiveTab = localStorage.getItem('dbplanner_active_tab') || 'tab-1';
+     if (savedTabs) {
+        try {
+           const parsedTabs = JSON.parse(savedTabs);
+           const active = parsedTabs.find((t: any) => t.id === savedActiveTab) || parsedTabs[0];
+           return active ? active.nodes : initialNodes;
+        } catch (e) {}
+     }
+     return initialNodes;
+  })());
+
+  const [edges, setEdges, onEdgesChange] = useEdgesState<any>((() => {
+     const savedTabs = localStorage.getItem('dbplanner_tabs');
+     const savedActiveTab = localStorage.getItem('dbplanner_active_tab') || 'tab-1';
+     if (savedTabs) {
+        try {
+           const parsedTabs = JSON.parse(savedTabs);
+           const active = parsedTabs.find((t: any) => t.id === savedActiveTab) || parsedTabs[0];
+           return active ? active.edges : initialEdges;
+        } catch (e) {}
+     }
+     return initialEdges;
+  })());
   const [sqlModalOpen, setSqlModalOpen] = useState(false);
   const [generatedSql, setGeneratedSql] = useState("");
 
@@ -65,6 +96,7 @@ export default function App() {
             targetHandle,
             animated: true,
             style: { stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '5, 5' },
+            markerEnd: 'url(#crows-foot)',
             className: 'pulsing-edge'
         } as any, eds));
       },
@@ -158,6 +190,16 @@ export default function App() {
     });
   }, [nodes, setEdges]);
 
+  // Efeito para auto-save no LocalStorage (Debounced)
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const tabsToSave = tabs.map(t => t.id === activeTabId ? { ...t, nodes, edges } : t);
+      localStorage.setItem('dbplanner_tabs', JSON.stringify(tabsToSave));
+      localStorage.setItem('dbplanner_active_tab', activeTabId);
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [tabs, activeTabId, nodes, edges]);
+
   const closeTab = (e: React.MouseEvent, tabId: string) => {
     e.stopPropagation();
     if (tabs.length === 1) {
@@ -236,6 +278,31 @@ export default function App() {
     }
   };
 
+  const onAutoLayout = useCallback(() => {
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, 'LR');
+    setNodes([...layoutedNodes]);
+    setEdges([...layoutedEdges]);
+    toast.success("Diagrama organizado magicamente!");
+  }, [nodes, edges, setNodes, setEdges]);
+
+  const onDownloadImage = useCallback(() => {
+    const el = document.querySelector('.react-flow') as HTMLElement;
+    if (el) {
+      toast.loading("Gerando imagem...", { id: 'download' });
+      toPng(el, { backgroundColor: '#0f172a' })
+        .then((dataUrl) => {
+          const link = document.createElement('a');
+          link.download = `diagrama-${Date.now()}.png`;
+          link.href = dataUrl;
+          link.click();
+          toast.success("Imagem baixada!", { id: 'download' });
+        })
+        .catch(() => {
+          toast.error("Erro ao gerar imagem.", { id: 'download' });
+        });
+    }
+  }, []);
+
   return (
     <div className="app-container">
       <Toaster 
@@ -249,7 +316,12 @@ export default function App() {
           } 
         }} 
       />
-      <Sidebar onAddTable={onAddTable} onExportSQL={onExportSQL} />
+      <Sidebar 
+        onAddTable={onAddTable} 
+        onExportSQL={onExportSQL} 
+        onAutoLayout={onAutoLayout}
+        onDownloadImage={onDownloadImage}
+      />
       
       <div className="workspace-area">
         <TabsBar 
